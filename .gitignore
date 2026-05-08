@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+
+# Data (raw/processed issues — gitignored per CLAUDE.md)
+data/
+
+# Analysis outputs (deliverables are local only)
+deliverables/
+
+# Claude Code worktrees (internal tooling)
+.claude/worktrees/
+
+# Virtual environments
+venv/
+
+# macOS
+.DS_Store
