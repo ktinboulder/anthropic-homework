@@ -157,14 +157,48 @@ def assign_priority(issue: dict) -> str:
     return "P3"
 
 
+_PRIORITY_LABEL = {"P0": "High", "P1": "High", "P2": "Medium", "P3": "Low"}
+
+
 def summarize_title(issue: dict) -> str:
     """Trim long titles to 100 chars."""
     title = issue.get("title", "").strip()
     return title[:100] + ("…" if len(title) > 100 else "")
 
 
+def brief_summary(issue: dict, max_chars: int = 160) -> str:
+    """Extract a short human-readable summary from the issue body.
+
+    Skips template headers (lines ending with ':' or starting with '#'/'>'),
+    then returns the first substantive sentence or fragment up to max_chars.
+    """
+    body = (issue.get("body") or "").strip()
+    if not body:
+        return ""
+
+    for line in body.splitlines():
+        line = line.strip()
+        # Skip blank lines, markdown headers, blockquotes, and template labels
+        if not line:
+            continue
+        if line.startswith(("#", ">", "-", "*", "|", "!")):
+            continue
+        if line.endswith(":") and len(line) < 60:
+            continue
+        # Found a substantive line — truncate at sentence boundary if possible
+        sentence_end = min(
+            (line.find(c) for c in ".!?" if line.find(c) != -1),
+            default=-1,
+        )
+        if 0 < sentence_end < max_chars:
+            return line[: sentence_end + 1]
+        return line[:max_chars] + ("…" if len(line) > max_chars else "")
+
+    return body[:max_chars] + ("…" if len(body) > max_chars else "")
+
+
 # ---------------------------------------------------------------------------
-# Main entry point
+# Main entry points
 # ---------------------------------------------------------------------------
 
 def categorize(issue: dict) -> dict[str, Any]:
@@ -184,4 +218,31 @@ def categorize(issue: dict) -> dict[str, Any]:
         "created_at": issue.get("created_at", "")[:10],
         "updated_at": issue.get("updated_at", "")[:10],
         "author": (issue.get("user") or {}).get("login", ""),
+    }
+
+
+def triage_row(issue: dict) -> dict[str, Any]:
+    """Return a triage-focused row for the simplified issue tracker spreadsheet.
+
+    Columns: Issue #, Title, Category/Tag(s), Priority (High/Medium/Low),
+             Brief Summary.
+    """
+    labels = _label_names(issue)
+    p_code = assign_priority(issue)
+    area = assign_area(issue)
+    issue_type = assign_type(issue)
+
+    # Category/Tag(s): combine area + type, plus any area: labels for detail
+    area_labels = [l for l in labels if l.startswith("area:")]
+    category_parts = [area, issue_type]
+    if area_labels:
+        category_parts.append(", ".join(area_labels))
+    category = " · ".join(dict.fromkeys(category_parts))  # dedupe, preserve order
+
+    return {
+        "Issue #": issue["number"],
+        "Title": summarize_title(issue),
+        "Category/Tag(s)": category,
+        "Priority": _PRIORITY_LABEL[p_code],
+        "Brief Summary": brief_summary(issue),
     }
