@@ -239,10 +239,15 @@ def triage_row(issue: dict) -> dict[str, Any]:
         category_parts.append(", ".join(area_labels))
     category = " · ".join(dict.fromkeys(category_parts))  # dedupe, preserve order
 
+    label_set = set(labels)
     return {
         "Issue #": issue["number"],
         "Title": summarize_title(issue),
         "Category/Tag(s)": category,
         "Priority": _PRIORITY_LABEL[p_code],
+        "Bug": "Yes" if "bug" in label_set else "No",
+        "Enhancement": "Yes" if "enhancement" in label_set else "No",
+        "Regression": "Yes" if "regression" in label_set else "No",
+        "Question": "Yes" if "question" in label_set else "No",
         "Brief Summary": brief_summary(issue),
     }
